@@ -1,0 +1,2 @@
+class MapConverter:
+    pass
