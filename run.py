@@ -11,8 +11,7 @@ def main():
     p = Path("nmi.tif")
     importer = DataImporter(p)
     data = importer.process()
-    print(data)
-    return data
+
 
 
 

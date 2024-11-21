@@ -32,38 +32,26 @@ class DataImporter:
         # Approximate center of your DEM data
         min_lon, min_lat, max_lon, max_lat = dem_clean.rio.bounds()
 
-        print(f"Longitude range: {min_lon} to {max_lon}")
-        print(f"Latitude range: {min_lat} to {max_lat}")
-
-        # get our midpoints for the origin (0,0) of our new coordinate system.
+        # Get our midpoints for the origin (0,0) of our new coordinate system
         mid_lon = (min_lon + max_lon) / 2
         mid_lat = (min_lat + max_lat) / 2
 
-        # Assuming 'elevation_values' is a NumPy array of your elevation data
+        # Compute min_elevation and max_elevation before the loops
         elevation_values = dem_clean.values[0].flatten()
-
-        # Remove NaN values
         elevation_values = elevation_values[~np.isnan(elevation_values)]
-
-        # Find minimum and maximum elevations
         min_elevation = np.min(elevation_values)
         max_elevation = np.max(elevation_values)
 
         print(f"Minimum elevation: {min_elevation} meters")
         print(f"Maximum elevation: {max_elevation} meters")
 
+        # Minecraft height parameters
         minecraft_min_y = -64
         minecraft_max_y = 319
-        minecraft_height_range = minecraft_max_y - minecraft_min_y  # Total of 384 blocks
-
-        # Normalize the elevations
-        y_minecraft = ((elevation_values - min_elevation) / (max_elevation - min_elevation)) * (minecraft_height_range) + minecraft_min_y
-
-        # Convert to integers (since block positions are integers)
-        y_minecraft = y_minecraft.astype(int)
+        minecraft_height_range = minecraft_max_y - minecraft_min_y
 
         # Real-world sea level elevation
-        sea_level_elevation = 0.0  # Adjust if your dataset's sea level is at a different elevation
+        sea_level_elevation = 0.0  # Adjust if necessary
 
         # Find the proportion of sea level in the elevation range
         sea_level_proportion = (sea_level_elevation - min_elevation) / (max_elevation - min_elevation)
@@ -74,14 +62,6 @@ class DataImporter:
         # Compute the offset to align with Minecraft's sea level at Y=62
         sea_level_offset = 62 - minecraft_sea_level_y
 
-        # Apply the offset to all Y-coordinates
-        y_minecraft += sea_level_offset
-
-        # Ensure Y-coordinates are within Minecraft's limits
-        y_minecraft = np.clip(y_minecraft, minecraft_min_y, minecraft_max_y)
-
-        # ChatGPT, part I need help with begins below.
-
         # Calculate the starting and maximum X coordinates in Minecraft units
         start_x = int((min_lon - mid_lon) * meters_per_degree_lon)
         max_x = int((max_lon - mid_lon) * meters_per_degree_lon)
@@ -90,20 +70,35 @@ class DataImporter:
         start_z = int(-(max_lat - mid_lat) * meters_per_degree_lat)
         max_z = int(-(min_lat - mid_lat) * meters_per_degree_lat)
 
-        def normalized_elevation(e):
-            return ((e - min_elevation) / (max_elevation - min_elevation)) * (minecraft_height_range) + minecraft_min_y
+        cur_z = start_z
 
-        cur_y = start_z
-
-        while cur_y < max_y:
+        while cur_z < max_z:
             cur_x = start_x
-            # update our cur_lon...
-            cur_lon = <placeholder>
+            # Update current latitude
+            cur_lat = mid_lat - cur_z / meters_per_degree_lat
             while cur_x < max_x:
-                # calculate and yield something
-                cur_lat = <placeholder>
-                e = dem_clean.sel(x=cur_lat, y=cur_lon, method='nearest')
-                e2 = normalized_elevation(e)
-                yield cur_x, cur_y, e2
+                # Update current longitude
+                cur_lon = mid_lon + cur_x / meters_per_degree_lon
+
+                # Retrieve the elevation at the current longitude and latitude
+                e = dem_clean.sel(x=cur_lon, y=cur_lat, method='nearest')
+
+                # Extract the elevation value
+                elevation = e.values[0]
+                if math.isnan(elevation):
+                    elevation = min_elevation  # Default to min_elevation or set to sea level
+
+                # Normalize the elevation to Minecraft's Y-coordinate
+                y_minecraft = ((elevation - min_elevation) / (max_elevation - min_elevation)) * minecraft_height_range + minecraft_min_y
+
+                # Apply sea level offset
+                y_minecraft += sea_level_offset
+
+                # Ensure Y-coordinate is within Minecraft's limits and convert to integer
+                y_minecraft = int(np.clip(y_minecraft, minecraft_min_y, minecraft_max_y))
+
+                # Yield the Minecraft coordinates
+                yield cur_x, cur_z, y_minecraft
+
                 cur_x += 1
-            cur_y += 1
+            cur_z += 1
