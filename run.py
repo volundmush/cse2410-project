@@ -4,6 +4,8 @@
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 from mconverter.dataimporter import DataImporter
+from mconverter.mapconverter import MapConverter
+from mconverter.mapexporter import MapExporter
 from pathlib import Path
 
 
@@ -11,7 +13,10 @@ def main():
     p = Path("nmi.tif")
     importer = DataImporter(p)
     data = importer.process()
-
+    converter = MapConverter(data)
+    converted = converter.process()
+    exporter = MapExporter(converted, "export")
+    exporter.process()
 
 
 
