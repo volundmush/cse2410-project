@@ -3,9 +3,16 @@
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
+from mconverter.dataimporter import DataImporter
+from pathlib import Path
+
 
 def main():
-    pass
+    p = Path("nmi.tif")
+    importer = DataImporter(p)
+    data = importer.process()
+    print(data)
+    return data
 
 
 
