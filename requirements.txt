@@ -1,3 +1,3 @@
-anvil-parser2
+amulet-core
 xarray
 rioxarray
